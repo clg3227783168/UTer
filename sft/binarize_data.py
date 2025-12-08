@@ -192,7 +192,7 @@ def parse_args():
     parser.add_argument('--output_path', '-output_path', type=str, default="./raw/sft.jsonl.sampled.processed", help='Path to output file')
     parser.add_argument('--workers', '-workers', type=int, default=1, help='Number of workers')
     parser.add_argument('--chunk_size', '-chunk_size', type=float, default=0.1 * 2 ** 30, help='Chunk size for file processing')
-    parser.add_argument('--max_len', '-max_len', type=int, default=8192, help='Maximum length for tokenization')
+    parser.add_argument('--max_len', '-max_len', type=int, default=16384, help='Maximum length for tokenization')
     parser.add_argument('--tokenizer_path', '-tokenizer_path', type=str, default="./pretrained_models/qwen/Qwen2.5-Coder-7B/", help='Path to tokenizer')
     parser.add_argument('--save_format', '-save_format', type=str, default=".npy", help='Path to tokenizer')
     return parser.parse_args()

@@ -4,3 +4,4 @@ val_data.json filter=lfs diff=lfs merge=lfs -text
 val_chatml.jsonl filter=lfs diff=lfs merge=lfs -text
 train_chatml.jsonl filter=lfs diff=lfs merge=lfs -text
 test_chatml.jsonl filter=lfs diff=lfs merge=lfs -text
+processed/train.npy filter=lfs diff=lfs merge=lfs -text

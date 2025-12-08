@@ -205,41 +205,56 @@ def train():
     model_args, data_args, training_args = parser.parse_args_into_dataclasses()
     args = {**model_args.__dict__, **data_args.__dict__, **training_args.__dict__}
     args = argparse.Namespace(**args)
-    #logging.info(args)
+    
+    # --- 修改点 1: 优化模型加载参数 (针对 ZeRO-3 和 H800) ---
     model = transformers.AutoModelForCausalLM.from_pretrained(
         model_args.model_name_or_path,
         cache_dir=training_args.cache_dir,
         attn_implementation="flash_attention_2" if model_args.use_flash_attention else None,
-        trust_remote_code = True
+        trust_remote_code=True,
+        torch_dtype=torch.bfloat16,  # 强制使用 bf16，节省显存并匹配 H800
+        device_map=None              # 显式设为 None，把模型放在 CPU，让 DeepSpeed 接管切分
     )
+
+    # --- 修改点 2: 开启梯度检查点 (防止 OOM 的核心) ---
+    if training_args.gradient_checkpointing:
+        model.gradient_checkpointing_enable()
+
     if training_args.use_peft:
+        # 注意：这里假设你传入的是 path，如果报错，建议直接用 LoraConfig 配置
         peft_config = PeftConfig.from_pretrained(training_args.peft_config_path)
         model.enable_input_require_grads()
         model = get_peft_model(model, peft_config)
         model.print_trainable_parameters()
+
     tokenizer = transformers.AutoTokenizer.from_pretrained(
         model_args.model_name_or_path,
-        pad_token = '<|endoftext|>',
-        eos_token = '<|im_end|>', #<|endoftext|>
-        cache_dir = None,
-        model_max_length = training_args.model_max_length,
-        truncation = True,
-        padding_side = "right",
-        trust_remote_code = True
+        pad_token='<|endoftext|>',
+        eos_token='<|im_end|>', 
+        cache_dir=None,
+        model_max_length=training_args.model_max_length,
+        truncation=True,
+        padding_side="right",
+        trust_remote_code=True
     )
-    tokenizer.add_special_tokens({"additional_special_tokens": ["<|im_end|>", "<|im_start|>"]})
+    
+    # --- 修改点 3: 调整 Embedding 大小 (必须做，否则遇到新 token 会报错) ---
+    num_new_tokens = tokenizer.add_special_tokens({"additional_special_tokens": ["<|im_end|>", "<|im_start|>"]})
+    if num_new_tokens > 0:
+        model.resize_token_embeddings(len(tokenizer))
+
     data_module = make_supervised_data_module(tokenizer=tokenizer, args=args)
-    #trainer = CustomTrainer(
+    
     trainer = Trainer(
         model=model, 
-        tokenizer=tokenizer, 
+        tokenizer=tokenizer, # 传入 tokenizer 以便 Trainer 自动处理 pad_token
         args=training_args, 
         **data_module, 
         callbacks=[LoggingCallback, SaveModelCallback]
     )
+    
     trainer.train()
     trainer.save_state()
     trainer.save_model(output_dir=training_args.output_dir)
-
 if __name__ == "__main__":
     train()

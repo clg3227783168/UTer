@@ -15,20 +15,17 @@ python binarize_data.py \
   - --workers: 并行处理的进程数，默认 1
   - --save_format: 保存格式，支持 .npy（默认）、.jsonl、.mmap
 
-  # 处理验证数据
-  python binarize_data.py \
-    --input_path ./val_data.json \
-    --output_path ./processed/val \
-    --tokenizer_path ./pretrained_models/qwen/Qwen2.5-Coder-7B/ \
-    --max_len 8192 \
-    --workers 64 \
-    --save_format .npy
+  python sft/binarize_data.py \
+    -input_path ./train_chatml.jsonl \
+    -output_path ./processed/ \
+    -tokenizer_path /public/huggingface-models/Qwen/Qwen3-1.7B/ \
+    -workers 64 
 
-  # 处理测试数据
-  python binarize_data.py \
-    --input_path ./test_data.json \
-    --output_path ./processed/test \
-    --tokenizer_path ./pretrained_models/qwen/Qwen2.5-Coder-7B/ \
-    --max_len 8192 \
-    --workers 64 \
-    --save_format .npy
+
+export NCCL_IB_DISABLE=1 
+# 环境变量，解决显存碎片
+export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
+DATA_PATH="/root/data/UTer/processed/train.npy"
+PRETRAINED_MODEL="/public/huggingface-models/Qwen/Qwen3-1.7B"
+OUTPUT_DIR="./checkpoints/sft_model/"
+bash sft/scripts/sft_qwencoder_with_lora.sh ${DATA_PATH} ${PRETRAINED_MODEL} ${OUTPUT_DIR}

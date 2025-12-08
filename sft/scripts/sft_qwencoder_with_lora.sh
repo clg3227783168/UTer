@@ -30,24 +30,24 @@ DISTRIBUTED_ARGS="
     --master_addr $MASTER_ADDR \
     --master_port $MASTER_PORT
 "
-DEEPSPEED_CONFIG="./configs/default_offload_opt_param.json"
-PEFT_CONFIG_FOLDER="./configs/lora"
+DEEPSPEED_CONFIG="/root/data/UTer/sft/configs/default_offload_opt_param.json"
+PEFT_CONFIG_FOLDER="/root/data/UTer/sft/configs/lora"
 BATCH_SIZE=1024
-MICRO_BATCH_SIZE=4
+MICRO_BATCH_SIZE=1
 GRAD_ACCU=$(($BATCH_SIZE / $WORLD_SIZE / $MICRO_BATCH_SIZE))
 
 LR=5e-5
 MIN_LR=5e-6
 WARMUP_STEPS=100
 WEIGHT_DECAY=0.0
-MAX_LENGTH=1280
+MAX_LENGTH=16384
 
 echo $OUTPUT_DIR
 echo "Pretrained Model" ${PRETRAINED_MODEL}
 echo "WORLD_SIZE" $WORLD_SIZE "MICRO BATCH SIZE" $MICRO_BATCH_SIZE "GRAD_ACCU" $GRAD_ACCU
 echo $DISTRIBUTED_ARGS
 
-cd ROOT_PATH="/path/to/sft/";
+cd /root/data/UTer/sft/;
 torchrun ${DISTRIBUTED_ARGS} train.py \
     --model_name_or_path  ${PRETRAINED_MODEL} \
     --data_path $DATA_PATH \
@@ -56,8 +56,9 @@ torchrun ${DISTRIBUTED_ARGS} train.py \
     --num_train_epochs 3 \
     --per_device_train_batch_size ${MICRO_BATCH_SIZE} \
     --gradient_accumulation_steps ${GRAD_ACCU} \
+    --gradient_checkpointing True \
     --per_device_eval_batch_size 4 \
-    --evaluation_strategy "no" \
+    --eval_strategy "no" \
     --save_strategy "steps" \
     --save_steps 100 \
     --save_total_limit 100 \
